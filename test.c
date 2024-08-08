@@ -16,6 +16,26 @@ gcc -o test test.c -lm
 #include <sys/syscall.h>
 #include <linux/perf_event.h>
 
+#define MAX_CPUS 1024
+int total_cores = 0;
+
+void detect_packages() {
+    char filename[BUFSIZ];
+    FILE *f;
+
+    for (int i = 0; i < MAX_CPUS; i++) {
+        sprintf(filename, "/sys/devices/system/cpu/cpu%d/topology/physical_package_id", i);
+
+        f = fopen(filename, "r");
+        if (f == NULL) break;
+        fclose(f);
+
+        total_cores++;
+    }
+
+    total_cores = total_cores / 2;
+}
+
 int open_msr(int core) {
     char msr_filename[BUFSIZ]; // String buffer for the filename
     sprintf(msr_filename, "/dev/cpu/%d/msr", core); // Adds the filename string to the buffer
@@ -77,9 +97,11 @@ int get_package_power(int core) {
 //
 
 int main(int argc, char **argv) {
+    detect_packages();
+
     printf("CPU   POWER\n");
 
-    for (int core = 0; core < 12; core++) {
+    for (int core = 0; core < total_cores; core++) {
         char core_as_string[2];
         sprintf(core_as_string, "%d", core);
         
